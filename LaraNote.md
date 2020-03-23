@@ -134,3 +134,47 @@ return view('notifications.show',[
 }
 
 ---
+
+## Send SMS Notifications in 5 Minutes
+
+_1. Subscribe to nexmo by following the link provide in the laravel documentation_
+
+_2. Run the command_ `composer require laravel/nexmo-notification-channel`
+
+_3. Add to the .env file_ `NEXMO_KEY` and `NEXMO_SECRET`
+
+_4. Add the following to config/service.php_
+
+---
+
+'nexmo' => [
+'sms_from' => 'your phone number',
+],
+
+---
+
+_5. Add To PaymentReceived.php the following_
+`return ['mail', 'database', 'nexmo']` to the _via methode_
+
+_6. Add the following code channel to PaymentRecieved.php_
+
+---
+
+public function toNexmo(\$notifiable)
+{
+return (new NexmoMessage())
+->content('shadow did not meet shadow master because of their strength in coding!, lol Mon message laravel');
+}
+
+---
+
+_7. Add To your user model_ the following code
+
+---
+
+public function routeNotificationForNexmo(\$notifiable)
+{
+return 'your phone number'
+}
+
+---

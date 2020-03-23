@@ -178,3 +178,63 @@ return 'your phone number'
 }
 
 ---
+
+# Section 12 Events
+
+The available events `php artisan event:list`
+
+Make a new event `php artisan make:event ProductPurchased`
+
+Add `public $name` and add `$name` to the _constroctor_ and initialised it `$this->name = $name;` to the ProductPurchased event
+
+Add To the store methode of the PaymentsController
+
+---
+
+public function store()
+{
+
+ProductPurchased::dispatch('toy');
+// event(new ProductPurchased('toy'));
+}
+
+---
+
+### Event processing
+
+-   process the payment
+-   unlock the purchase
+
+-   listeners
+-   notify the user about the payment
+-   award achievements
+-   send shareable coupon code
+
+Create a listener `php artisan make:listener AwardAchievements or php artisan make:listener AwardAchievements -e ProductPurchased`
+
+Add `var_dump('check for new achievements');` to the handle method of the AwardAchievements listener
+
+Add `ProductPurchased::class => [AwardAchievements::class,]` to the _EventServiceProvider.php_ at the _\$listen variable_
+
+Run `php artisan make:listener SendShareableCoupon -e ProductPurchased`
+
+Add `var_dump('send shareable coupon');` to the handle method of the SendShareableCoupon listener
+
+Add `ProductPurchased::class => [AwardAchievements::class,SendShareableCoupon::class]` to the _EventServiceProvider.php_ at the _\$listen variable_
+
+Remove the above line and add:
+
+---
+
+public function shouldDiscoverEvents()
+{
+return true;
+}
+
+---
+
+You could try once again
+
+`php artisan make:listener DoOtherThing -e ProductPurchased`
+
+Add `var_dump('do other thing');` to the handle method of the DoOtherThing listener

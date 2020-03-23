@@ -119,3 +119,18 @@ return view('notifications.show',[
 }
 
 ---
+
+OR
+
+---
+
+public function show()
+{
+\$notifications = tap(auth()->user()->unreadNotifications)->markAsRead();
+
+return view('notifications.show',[
+'notifications' => $notifications
+]);
+}
+
+---

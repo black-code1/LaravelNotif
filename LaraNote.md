@@ -443,3 +443,61 @@ and to the `replies` view:
 <span style="color: green;">Best Reply!!</span>
 @endif
 ***
+
+## Authorization Filters
+
+*1.Add before function to ConversationPolicy*
+
+````````
+public function before(User $user)
+    {
+        if($user->id === 21) { //admin
+            return true;
+        }
+    }
+````````
+
+OR You could set it globally
+
+*2.Add To AuthServiceProvider boot function* the following
+
+````
+Gate::before(function (User $user) {
+            if ($user->id === 13) {
+                return true;
+            }
+        });
+````
+
+## Middleware Based Authorization
+
+*1.ConversationsController* Authorize that we can view a conversation
+
+*** 
+public function show(Conversation $conversation)
+    {
+
+        $this->authorize('view', $conversation);
+        return view('conversations.show', [
+            'conversation' => $conversation
+        ]);
+    }
+***
+
+*2.ConversationPolicy* Duplicate update method and rename it *view* `To check if the given user can view a conversation`
+
+***
+public function view(User $user, Conversation $conversation)
+    {
+
+        return $conversation->user->is($user);
+    }
+***
+
+### Middleware Way
+
+*1. show methode of ConversationsController* `return view('conversations.show', ['conversation' => $conversation]);`
+
+*2. Route definition* `Route::get('conversations/{conversation}', 'ConversationsController@show')->('can:view,conversation');` with *can* an identifier, *view* ability, *conversation* wildcard
+
+## Role Based Authorization

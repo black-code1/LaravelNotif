@@ -238,3 +238,208 @@ You could try once again
 `php artisan make:listener DoOtherThing -e ProductPurchased`
 
 Add `var_dump('do other thing');` to the handle method of the DoOtherThing listener
+
+# Section 13 Authorization
+
+_1.Create seeders to generate test data_ `php artisan make:seeder UsersTableSeeder` NB: userFactory already exist
+`php artisan make:seeder ConversationsTableSeeder`
+
+---
+
+public function run()
+{
+
+factory(Conversation::class, 3)->create();
+}
+
+---
+
+_2.Create factory_ `php artisan make:factory ConversationFactory`
+
+---
+
+$factory->define(Conversation::class, function (Faker $faker) {
+return [
+
+'user_id' => factory(User::class)->create(),
+'title' => $faker->title,
+'body' => $faker->paragraph($nbSentences = 3, $variableNbSentences = true),
+];
+});
+
+---
+
+_3.Run migration_ `php artisan migrate:fresh`
+
+_4.Run seeders_ `php artisan db:seed`
+
+_5.If the user can update the current conversations._ We then display the form
+
+---
+
+@can('update-conversation',\$conversation)
+
+<form action="/best-replies/{{ $reply->id }}" method="post">
+<button type="submit" class="btn p-0 text-muted">Best Reply?</button>
+</form>
+@endcan
+
+---
+
+_6.Move to AuthServiceProvider boot function_ to register any authentication / authorization services
+
+Use larave Gate class to get the user who wrote the current conversation.
+`update-conversation` is the new key we defined that yo reference in your view previously on the `@can` blade directive
+
+---
+
+Gate::define('update-conversation', function (User $user, Conversation $conversation) {
+return $conversation->user->is($user);
+});
+
+---
+
+_7.Create a route for the best conversation reply_ `Route::post('best-replies/{reply}', 'ConversationBestReplyController@store');`
+
+---
+
+public function store(Reply $reply)
+    {
+        // authorize that the current user has permission to set the best reply
+        // for the conversation
+        $this->authorize('update-conversation', \$reply->conversation);
+
+        // then set it
+        $reply->conversation->best_reply_id = $reply->id;
+        $reply->conversation->save();
+
+        // redirect back to the conversation page
+        return back();
+    }
+
+---
+
+for fairly simple application, think about policy classes
+
+_- Create a policy for a conversation_ `php artisan make:policy ConversationPolicy --model=Conversation`
+
+Delete codes in the policy file from create to `use HandlesAuthorization;` without deleting the `use HandlesAuthorization;`
+
+Just leaves this code
+
+---
+
+<?php
+
+namespace App\Policies;
+
+use App\Conversation;
+use App\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
+
+class ConversationPolicy
+{
+    use HandlesAuthorization;
+
+
+    /**
+     * Determine whether the user can update the conversation.
+     *
+     * @param  \App\User  $user
+     * @param  \App\Conversation  $conversation
+     * @return mixed
+     */
+    public function update(User $user, Conversation $conversation)
+    {
+        return $conversation->user->is($user);
+    }
+}
+***
+
+
+
+Return to your `AuthServiceProvider` and remove the following line
+***
+ Gate::define('update-conversation', function (User $user, Conversation $conversation) {
+            return $conversation->user->is($user);
+        });
+***
+
+
+Go Back to the controller
+*We reference the policy method as follow* 
+
+***
+ public function store(Reply $reply)
+    {
+        // authorize that the current user has permission to set the best reply
+        // for the conversation
+        $this->authorize('update', $reply->conversation);
+
+        // then set it
+        $reply->conversation->best_reply_id = $reply->id;
+        $reply->conversation->save();
+
+        // redirect back to the conversation page
+        return back();
+    }
+***
+
+
+Go Back to the `Conversation` model and add the following method
+
+***
+public function setBestReply(Reply $reply)
+    {
+        $this->best_reply_id = $reply->id;
+        $this->save();
+    }
+***
+
+Finaly Modifie your controller as follow:
+
+***
+class ConversationBestReplyController extends Controller
+{
+    public function store(Reply $reply)
+    {
+        
+        $this->authorize('update', $reply->conversation);
+
+        $reply->conversation->setBestReply($reply);
+
+        return back();
+    }
+}
+***
+
+Then return to our `Replies view` and modifie the `@can` directive to `@can('update',$conversation)`
+
+and add the following code:
+
+***
+<header style="display:flex; justify-content: space-between;">
+        <p class="m-0"><strong>{{ $reply->user->name }} said...</strong></p>
+
+        @if ($conversation->best_reply_id === $reply->id)
+        <span style="color: green;">Best Reply!!</span>
+        @endif
+    </header>
+***
+
+Move To the `Reply` Model and add the following:
+
+***
+public function isBest()
+    {
+        return $this->id === $this->conversation->best_reply_id;
+    }
+***
+
+and to the `replies` view:
+
+***
+@if ($reply->isBest())
+<span style="color: green;">Best Reply!!</span>
+@endif
+***

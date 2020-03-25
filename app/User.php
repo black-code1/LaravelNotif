@@ -41,4 +41,9 @@ class User extends Authenticatable
     {
         return '237699262831';
     }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class);
+    }
 }
